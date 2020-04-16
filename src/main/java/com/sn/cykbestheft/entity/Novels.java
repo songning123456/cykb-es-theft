@@ -28,7 +28,7 @@ public class Novels {
 
     private String coverUrl;
 
-    private Date updateTime;
+    private String updateTime;
 
     private Long createTime;
 

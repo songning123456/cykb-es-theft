@@ -67,8 +67,7 @@ public class TheftProcessor {
                             String title = infoElement.getElementsByTag("h1").html();
                             String category = childDoc.getElementsByClass("con_top").get(0).getElementsByTag("a").get(2).html();
                             String strUpdateTime = infoElement.getElementsByTag("p").get(2).html().split("：")[1];
-                            Date updateTime = DateUtil.strToDate(strUpdateTime, "yyyy-MM-dd HH:mm:ss");
-                            Novels novels = Novels.builder().title(title).author(author).sourceUrl(bookUrl).sourceName("笔趣阁").category(category).createTime(createTime).coverUrl(coverUrl).introduction(introduction).latestChapter(latestChapter).updateTime(updateTime).build();
+                            Novels novels = Novels.builder().title(title).author(author).sourceUrl(bookUrl).sourceName("笔趣阁").category(category).createTime(createTime).coverUrl(coverUrl).introduction(introduction).latestChapter(latestChapter).updateTime(strUpdateTime).build();
                             JestResult jestResult = elasticSearchDao.save(novelsElasticSearch, novels);
                             String novelsId = ((DocumentResult)jestResult).getId();
                             log.info("NOVELS当前小说sourceUrl: {}", novels.getSourceUrl());
@@ -144,8 +143,7 @@ public class TheftProcessor {
                         String title = contentDoc.getElementById("info").getElementsByTag("h1").get(0).html();
                         String category = contentDoc.getElementsByClass("con_top").get(0).getElementsByTag("a").get(1).html();
                         String strUpdateTime = contentDoc.getElementById("info").getElementsByTag("p").get(2).html().split("：")[1];
-                        Date updateTime = DateUtil.strToDate(strUpdateTime, "yyyy-MM-dd HH:mm:ss");
-                        Novels novels = Novels.builder().title(title).author(author).sourceUrl(contentUrl).sourceName("147小说").category(category).createTime(createTime).coverUrl(coverUrl).introduction(introduction).latestChapter(latestChapter).updateTime(updateTime).build();
+                        Novels novels = Novels.builder().title(title).author(author).sourceUrl(contentUrl).sourceName("147小说").category(category).createTime(createTime).coverUrl(coverUrl).introduction(introduction).latestChapter(latestChapter).updateTime(strUpdateTime).build();
                         JestResult jestResult = elasticSearchDao.save(novelsElasticSearch, novels);
                         String novelsId = ((DocumentResult)jestResult).getId();
                         log.info("NOVELS当前小说sourceUrl: {}", novels.getSourceUrl());
@@ -233,8 +231,7 @@ public class TheftProcessor {
                 String title = dictionaryDoc.getElementById("info").getElementsByTag("h1").get(0).html();
                 String category = dictionaryDoc.getElementById("info").getElementsByTag("p").get(1).html().split("：")[1];
                 String strUpdateTime = DateUtil.dateToStr(new Date(), "yyyy-MM-dd HH:mm:ss");
-                Date updateTime = DateUtil.strToDate(strUpdateTime, "yyyy-MM-dd HH:mm:ss");
-                Novels novels = Novels.builder().title(title).author(author).sourceUrl(dictionaryUrl).sourceName("天天书吧").category(category).createTime(createTime).coverUrl(coverUrl).introduction(introduction).latestChapter(latestChapter).updateTime(updateTime).build();
+                Novels novels = Novels.builder().title(title).author(author).sourceUrl(dictionaryUrl).sourceName("天天书吧").category(category).createTime(createTime).coverUrl(coverUrl).introduction(introduction).latestChapter(latestChapter).updateTime(strUpdateTime).build();
                 JestResult jestResult = elasticSearchDao.save(novelsElasticSearch, novels);
                 String novelsId = ((DocumentResult)jestResult).getId();
                 log.info("NOVELS当前小说sourceUrl: {}", novels.getSourceUrl());
@@ -308,8 +305,7 @@ public class TheftProcessor {
                         String category = novelsDoc.getElementsByClass("con_top").get(0).getElementsByTag("a").get(2).html();
                         String[] times = (infoElement.getElementsByTag("p").get(2).html().split("：")[1]).split(" ");
                         String strUpdateTime = times[0] + " " + times[1] + ":00";
-                        Date updateTime = DateUtil.strToDate(strUpdateTime, "yyyy-MM-dd HH:mm:ss");
-                        Novels novels = Novels.builder().title(title).author(author).sourceUrl(novelsUrl).sourceName("趣书吧").category(category).createTime(createTime).coverUrl(coverUrl).introduction(introduction).latestChapter(latestChapter).updateTime(updateTime).build();
+                        Novels novels = Novels.builder().title(title).author(author).sourceUrl(novelsUrl).sourceName("趣书吧").category(category).createTime(createTime).coverUrl(coverUrl).introduction(introduction).latestChapter(latestChapter).updateTime(strUpdateTime).build();
                         JestResult jestResult = elasticSearchDao.save(novelsElasticSearch, novels);
                         String novelsId = ((DocumentResult)jestResult).getId();
                         log.info("NOVELS当前小说sourceUrl: {}", novels.getSourceUrl());
@@ -378,7 +374,6 @@ public class TheftProcessor {
                         int left = paramTime.indexOf("(");
                         int right = paramTime.indexOf(")");
                         String strUpdateTime = paramTime.substring(left + 1, right) + " 00:00:00";
-                        Date updateTime = DateUtil.strToDate(strUpdateTime, "yyyy-MM-dd HH:mm:ss");
                         String bookHtml = bookInfo.html();
                         int firstBr = bookHtml.indexOf("<br>");
                         String introduction = bookHtml.substring(0, firstBr);
@@ -392,7 +387,7 @@ public class TheftProcessor {
                         String latestChapter = bookInfo.getElementsByTag("a").html();
                         Thread.sleep(1);
                         Long createTime = DateUtil.dateToLong(new Date());
-                        Novels novels = Novels.builder().title(title).author(author).sourceUrl(novelsUrl).sourceName("飞库小说").category(category).createTime(createTime).coverUrl(coverUrl).introduction(introduction).latestChapter(latestChapter).updateTime(updateTime).build();
+                        Novels novels = Novels.builder().title(title).author(author).sourceUrl(novelsUrl).sourceName("飞库小说").category(category).createTime(createTime).coverUrl(coverUrl).introduction(introduction).latestChapter(latestChapter).updateTime(strUpdateTime).build();
                         JestResult jestResult = elasticSearchDao.save(novelsElasticSearch, novels);
                         String novelsId = ((DocumentResult)jestResult).getId();
                         log.info("NOVELS当前小说sourceUrl: {}", novels.getSourceUrl());

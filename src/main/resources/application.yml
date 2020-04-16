@@ -8,7 +8,7 @@ spring:
       path: /cykb-es-theft
   elasticsearch:
     jest:
-      uris: http://127.0.0.1:29200
+      uris: http://192.168.0.110:9200
       connection-timeout: 30000
       multi-threaded: true
       read-timeout: 7200
