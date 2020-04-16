@@ -1,0 +1,21 @@
+
+server:
+  port: 8022
+
+spring:
+  mvc:
+    servlet:
+      path: /cykb-es-theft
+  elasticsearch:
+    jest:
+      uris: http://127.0.0.1:29200
+      connection-timeout: 30000
+      multi-threaded: true
+      read-timeout: 7200
+
+logging:
+  level:
+    root: warn
+    com: info
+  file:
+    name: logs/cykb-es.log
