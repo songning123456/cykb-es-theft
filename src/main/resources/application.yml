@@ -18,4 +18,4 @@ logging:
     root: warn
     com: info
   file:
-    name: logs/cykb-es.log
+    name: logs/cykb-es-theft.log
