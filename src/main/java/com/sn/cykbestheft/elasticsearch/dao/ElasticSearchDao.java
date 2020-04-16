@@ -35,7 +35,7 @@ public class ElasticSearchDao {
     @Autowired
     private JestClient jestClient;
 
-    public <T> void save(ElasticSearch elasticSearch, T entity) throws Exception {
+    public <T> JestResult save(ElasticSearch elasticSearch, T entity) throws Exception {
         if (entity == null) {
             throw new Exception("elasticSearch-save 参数异常");
         }
@@ -44,6 +44,7 @@ public class ElasticSearchDao {
         if (!jestResult.isSucceeded()) {
             throw new Exception(jestResult.getErrorMessage());
         }
+        return jestResult;
     }
 
     public <T> void bulk(ElasticSearch elasticSearch, List<T> list) throws Exception {

@@ -125,15 +125,14 @@ public class DateUtil {
      * @param interval
      * @return
      */
-    public static Date intervalTime(String strCurrentTime, int interval) {
+    public static String intervalTime(String strCurrentTime, int interval) {
         Date currentTime = DateUtil.strToDate(strCurrentTime, "yyyy-MM-dd HH:mm:ss");
         Long oneDay = (long) (24 * 60 * 60 * 1000);
         Long lgCurrentTime = currentTime.getTime();
         Long lgStartTime = lgCurrentTime - (interval * oneDay);
         Date startTime = new Date(lgStartTime);
         String strStartTime = DateUtil.dateToStr(startTime, "yyyy-MM-dd HH:mm:ss");
-        System.out.println(strStartTime);
-        return startTime;
+        return strStartTime;
     }
 
     public static void main(String[] args) {

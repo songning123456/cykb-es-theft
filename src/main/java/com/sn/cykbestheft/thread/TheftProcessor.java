@@ -1,10 +1,14 @@
 package com.sn.cykbestheft.thread;
 
 import com.sn.cykbestheft.elasticsearch.dao.ElasticSearchDao;
+import com.sn.cykbestheft.elasticsearch.entity.ElasticSearch;
 import com.sn.cykbestheft.entity.Chapters;
 import com.sn.cykbestheft.entity.Novels;
 import com.sn.cykbestheft.util.DateUtil;
 import com.sn.cykbestheft.util.HttpUtil;
+import io.searchbox.client.JestResult;
+import io.searchbox.core.DocumentResult;
+import io.searchbox.core.SearchResult;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -13,9 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 /**
  * @author: songning
@@ -27,6 +29,9 @@ public class TheftProcessor {
 
     @Autowired
     private ElasticSearchDao elasticSearchDao;
+
+    private ElasticSearch novelsElasticSearch = ElasticSearch.builder().index("novels_index").type("novels").build();
+    private ElasticSearch chaptersElasticSearch = ElasticSearch.builder().index("chapters_index").type("chapters").build();
 
     @Async("CategoryExecutor")
     public void theftBiquge() {
@@ -41,10 +46,15 @@ public class TheftProcessor {
                         try {
                             String bookUrl = ulElement.getElementsByTag("a").get(j).attr("href");
                             // 判断 是否已经存在，如果存在则跳过
-//                            List<Novels> jNovels = novelsRepository.findBySourceUrl(bookUrl);
-//                            if (jNovels != null && jNovels.size() > 0) {
-//                                continue;
-//                            }
+                            Map<String, Object> novelsTermParams = new HashMap<String, Object>() {
+                                {
+                                    put("sourceUrl", bookUrl);
+                                }
+                            };
+                            List<SearchResult.Hit<Object, Void>> jNovels = elasticSearchDao.mustTermRangeQuery(novelsElasticSearch, novelsTermParams, null);
+                            if (jNovels != null && !jNovels.isEmpty()) {
+                                continue;
+                            }
                             Document childDoc = HttpUtil.getHtmlFromUrl(bookUrl, true);
                             Element maininfoElement = childDoc.getElementById("maininfo");
                             String coverUrl = childDoc.getElementById("sidebar").getElementsByTag("img").get(0).attr("src");
@@ -59,24 +69,30 @@ public class TheftProcessor {
                             String strUpdateTime = infoElement.getElementsByTag("p").get(2).html().split("：")[1];
                             Date updateTime = DateUtil.strToDate(strUpdateTime, "yyyy-MM-dd HH:mm:ss");
                             Novels novels = Novels.builder().title(title).author(author).sourceUrl(bookUrl).sourceName("笔趣阁").category(category).createTime(createTime).coverUrl(coverUrl).introduction(introduction).latestChapter(latestChapter).updateTime(updateTime).build();
-                            novels = novelsRepository.save(novels);
+                            JestResult jestResult = elasticSearchDao.save(novelsElasticSearch, novels);
+                            String novelsId = ((DocumentResult)jestResult).getId();
                             log.info("NOVELS当前小说sourceUrl: {}", novels.getSourceUrl());
-                            String novelsId = novels.getId();
                             Element dlElement = childDoc.getElementById("list").getElementsByTag("dl").get(0);
                             for (int k = 0, kLen = dlElement.getElementsByTag("dd").size(); k < kLen; k++) {
                                 try {
                                     Element a = dlElement.getElementsByTag("dd").get(k).getElementsByTag("a").get(0);
                                     String chapter = a.html();
-                                    List<Chapters> kChapters = chaptersRepository.findByChapterAndNovelsId(chapter, novelsId);
+                                    Map<String, Object> chaptersTermParams = new HashMap<String, Object>() {
+                                        {
+                                            put("chapter", chapter);
+                                            put("novelsId", novelsId);
+                                        }
+                                    };
+                                    List<SearchResult.Hit<Object, Void>> kChapters = elasticSearchDao.mustTermRangeQuery(chaptersElasticSearch, chaptersTermParams, null);
                                     if (kChapters != null && kChapters.size() > 0) {
                                         continue;
                                     }
-                                    Date chapterUpTime = DateUtil.intervalTime(strUpdateTime, kLen - k - 1);
+                                    String chapterUpTime = DateUtil.intervalTime(strUpdateTime, kLen - k - 1);
                                     String chapterUrl = "http://www.xbiquge.la/" + a.attr("href");
                                     Document contentDoc = HttpUtil.getHtmlFromUrl(chapterUrl, true);
                                     String content = contentDoc.getElementById("content").html();
                                     Chapters chapters = Chapters.builder().chapter(chapter).content(content).novelsId(novelsId).updateTime(chapterUpTime).build();
-                                    chaptersRepository.save(chapters);
+                                    elasticSearchDao.save(chaptersElasticSearch, chapters);
                                     log.info("CHAPTERS当前小说sourceUrl: {}; 章节chapter: {}", novels.getSourceUrl(), chapters.getChapter());
                                 } catch (Exception e) {
                                     log.error("笔趣阁 one: {}", e.getMessage());
@@ -108,8 +124,14 @@ public class TheftProcessor {
                     try {
                         String AContent = liElement.getElementsByTag("a").get(0).attr("href");
                         String contentUrl = "http://www.147xiaoshuo.com/" + AContent;
-                        List<Novels> jNovels = novelsRepository.findBySourceUrl(contentUrl);
-                        if (jNovels != null && jNovels.size() > 0) {
+                        // 判断 是否已经存在，如果存在则跳过
+                        Map<String, Object> novelsTermParams = new HashMap<String, Object>() {
+                            {
+                                put("sourceUrl", contentUrl);
+                            }
+                        };
+                        List<SearchResult.Hit<Object, Void>> jNovels = elasticSearchDao.mustTermRangeQuery(novelsElasticSearch, novelsTermParams, null);
+                        if (jNovels != null && !jNovels.isEmpty()) {
                             continue;
                         }
                         Document contentDoc = HttpUtil.getHtmlFromUrl(contentUrl, true);
@@ -124,24 +146,30 @@ public class TheftProcessor {
                         String strUpdateTime = contentDoc.getElementById("info").getElementsByTag("p").get(2).html().split("：")[1];
                         Date updateTime = DateUtil.strToDate(strUpdateTime, "yyyy-MM-dd HH:mm:ss");
                         Novels novels = Novels.builder().title(title).author(author).sourceUrl(contentUrl).sourceName("147小说").category(category).createTime(createTime).coverUrl(coverUrl).introduction(introduction).latestChapter(latestChapter).updateTime(updateTime).build();
-                        novels = novelsRepository.save(novels);
+                        JestResult jestResult = elasticSearchDao.save(novelsElasticSearch, novels);
+                        String novelsId = ((DocumentResult)jestResult).getId();
                         log.info("NOVELS当前小说sourceUrl: {}", novels.getSourceUrl());
-                        String novelsId = novels.getId();
                         Elements ddElements = contentDoc.getElementById("list").getElementsByTag("dd");
                         for (int k = 0, kLen = ddElements.size(); k < kLen; k++) {
                             try {
                                 Element chapterElement = ddElements.get(k).getElementsByTag("a").get(0);
                                 String chapter = chapterElement.html();
-                                List<Chapters> kChapters = chaptersRepository.findByChapterAndNovelsId(chapter, novelsId);
+                                Map<String, Object> chaptersTermParams = new HashMap<String, Object>() {
+                                    {
+                                        put("chapter", chapter);
+                                        put("novelsId", novelsId);
+                                    }
+                                };
+                                List<SearchResult.Hit<Object, Void>> kChapters = elasticSearchDao.mustTermRangeQuery(chaptersElasticSearch, chaptersTermParams, null);
                                 if (kChapters != null && kChapters.size() > 0) {
                                     continue;
                                 }
                                 String chapterUrl = "http://www.147xiaoshuo.com/" + chapterElement.attr("href");
-                                Date chapterUpTime = DateUtil.intervalTime(strUpdateTime, kLen - k - 1);
+                                String chapterUpTime = DateUtil.intervalTime(strUpdateTime, kLen - k - 1);
                                 Document chapterDoc = HttpUtil.getHtmlFromUrl(chapterUrl, true);
                                 String content = chapterDoc.getElementById("content").html();
                                 Chapters chapters = Chapters.builder().chapter(chapter).content(content).novelsId(novelsId).updateTime(chapterUpTime).build();
-                                chaptersRepository.save(chapters);
+                                elasticSearchDao.save(chaptersElasticSearch, chapters);
                                 log.info("CHAPTERS当前小说sourceUrl: {}; 章节chapter: {}", novels.getSourceUrl(), chapters.getChapter());
                             } catch (Exception e) {
                                 log.error("147小说 one fail: {}", e.getMessage());
@@ -185,8 +213,14 @@ public class TheftProcessor {
         for (int j = 0, jLen = picElements.size(); j < jLen; j++) {
             try {
                 String dictionaryUrl = picElements.get(j).getElementsByTag("a").get(0).attr("href");
-                List<Novels> jNovels = novelsRepository.findBySourceUrl(dictionaryUrl);
-                if (jNovels != null && jNovels.size() > 0) {
+                // 判断 是否已经存在，如果存在则跳过
+                Map<String, Object> novelsTermParams = new HashMap<String, Object>() {
+                    {
+                        put("sourceUrl", dictionaryUrl);
+                    }
+                };
+                List<SearchResult.Hit<Object, Void>> jNovels = elasticSearchDao.mustTermRangeQuery(novelsElasticSearch, novelsTermParams, null);
+                if (jNovels != null && !jNovels.isEmpty()) {
                     continue;
                 }
                 String introduction = document.getElementById("alist").getElementsByClass("info").get(j).getElementsByClass("intro").get(0).html();
@@ -201,27 +235,33 @@ public class TheftProcessor {
                 String strUpdateTime = DateUtil.dateToStr(new Date(), "yyyy-MM-dd HH:mm:ss");
                 Date updateTime = DateUtil.strToDate(strUpdateTime, "yyyy-MM-dd HH:mm:ss");
                 Novels novels = Novels.builder().title(title).author(author).sourceUrl(dictionaryUrl).sourceName("天天书吧").category(category).createTime(createTime).coverUrl(coverUrl).introduction(introduction).latestChapter(latestChapter).updateTime(updateTime).build();
-                novels = novelsRepository.save(novels);
+                JestResult jestResult = elasticSearchDao.save(novelsElasticSearch, novels);
+                String novelsId = ((DocumentResult)jestResult).getId();
                 log.info("NOVELS当前小说sourceUrl: {}", novels.getSourceUrl());
-                String novelsId = novels.getId();
                 Elements ddElements = dictionaryDoc.getElementById("list").getElementsByTag("dd");
                 for (int k = 0, kLen = ddElements.size(); k < kLen; k++) {
                     try {
                         Element chapterElement = ddElements.get(k).getElementsByTag("a").get(0);
                         String chapter = chapterElement.html();
-                        List<Chapters> kChapters = chaptersRepository.findByChapterAndNovelsId(chapter, novelsId);
+                        Map<String, Object> chaptersTermParams = new HashMap<String, Object>() {
+                            {
+                                put("chapter", chapter);
+                                put("novelsId", novelsId);
+                            }
+                        };
+                        List<SearchResult.Hit<Object, Void>> kChapters = elasticSearchDao.mustTermRangeQuery(chaptersElasticSearch, chaptersTermParams, null);
                         if (kChapters != null && kChapters.size() > 0) {
                             continue;
                         }
                         String chapterUrl = dictionaryUrl + chapterElement.attr("href");
-                        Date chapterUpTime = DateUtil.intervalTime(strUpdateTime, kLen - k - 1);
+                        String chapterUpTime = DateUtil.intervalTime(strUpdateTime, kLen - k - 1);
                         Document chapterDoc = HttpUtil.getHtmlFromUrl(chapterUrl, true);
                         String content = chapterDoc.getElementById("TXT").html();
                         int headIndex = content.indexOf("&nbsp;&nbsp;&nbsp;&nbsp;");
                         int tailIndex = content.indexOf("<div class=\"bottem\">");
                         content = content.substring(headIndex, tailIndex);
                         Chapters chapters = Chapters.builder().chapter(chapter).content(content).novelsId(novelsId).updateTime(chapterUpTime).build();
-                        chaptersRepository.save(chapters);
+                        elasticSearchDao.save(chaptersElasticSearch, chapters);
                         log.info("CHAPTERS当前小说sourceUrl: {}; 章节chapter: {}", novels.getSourceUrl(), chapters.getChapter());
                     } catch (Exception e) {
                         log.error("天天书吧 one fail: {}", e.getMessage());
@@ -246,8 +286,13 @@ public class TheftProcessor {
                     for (int j = 0, jLen = ulElement.getElementsByTag("a").size(); j < jLen; j++) {
                         String novelsUrl = ulElement.getElementsByTag("a").get(j).attr("href");
                         // 判断 是否已经存在，如果存在则跳过
-                        List<Novels> jNovels = novelsRepository.findBySourceUrl(novelsUrl);
-                        if (jNovels != null && jNovels.size() > 0) {
+                        Map<String, Object> novelsTermParams = new HashMap<String, Object>() {
+                            {
+                                put("sourceUrl", novelsUrl);
+                            }
+                        };
+                        List<SearchResult.Hit<Object, Void>> jNovels = elasticSearchDao.mustTermRangeQuery(novelsElasticSearch, novelsTermParams, null);
+                        if (jNovels != null && !jNovels.isEmpty()) {
                             continue;
                         }
                         Document novelsDoc = HttpUtil.getHtmlFromUrl(novelsUrl, true);
@@ -265,24 +310,30 @@ public class TheftProcessor {
                         String strUpdateTime = times[0] + " " + times[1] + ":00";
                         Date updateTime = DateUtil.strToDate(strUpdateTime, "yyyy-MM-dd HH:mm:ss");
                         Novels novels = Novels.builder().title(title).author(author).sourceUrl(novelsUrl).sourceName("趣书吧").category(category).createTime(createTime).coverUrl(coverUrl).introduction(introduction).latestChapter(latestChapter).updateTime(updateTime).build();
-                        novels = novelsRepository.save(novels);
+                        JestResult jestResult = elasticSearchDao.save(novelsElasticSearch, novels);
+                        String novelsId = ((DocumentResult)jestResult).getId();
                         log.info("NOVELS当前小说sourceUrl: {}", novels.getSourceUrl());
-                        String novelsId = novels.getId();
                         Element dlElement = novelsDoc.getElementById("list").getElementsByTag("dl").get(0);
                         for (int k = 0, kLen = dlElement.getElementsByTag("dd").size(); k < kLen; k++) {
                             try {
                                 Element a = dlElement.getElementsByTag("dd").get(k).getElementsByTag("a").get(0);
                                 String chapter = a.html();
-                                List<Chapters> kChapters = chaptersRepository.findByChapterAndNovelsId(chapter, novelsId);
+                                Map<String, Object> chaptersTermParams = new HashMap<String, Object>() {
+                                    {
+                                        put("chapter", chapter);
+                                        put("novelsId", novelsId);
+                                    }
+                                };
+                                List<SearchResult.Hit<Object, Void>> kChapters = elasticSearchDao.mustTermRangeQuery(chaptersElasticSearch, chaptersTermParams, null);
                                 if (kChapters != null && kChapters.size() > 0) {
                                     continue;
                                 }
                                 String chapterUrl = novelsUrl + a.attr("href");
-                                Date chapterUpTime = DateUtil.intervalTime(strUpdateTime, kLen - k - 1);
+                                String chapterUpTime = DateUtil.intervalTime(strUpdateTime, kLen - k - 1);
                                 Document contentDoc = HttpUtil.getHtmlFromUrl(chapterUrl, true);
                                 String content = contentDoc.getElementById("content").html();
                                 Chapters chapters = Chapters.builder().chapter(chapter).content(content).novelsId(novelsId).updateTime(chapterUpTime).build();
-                                chaptersRepository.save(chapters);
+                                elasticSearchDao.save(chaptersElasticSearch, chapters);
                                 log.info("CHAPTERS当前小说sourceUrl: {}; 章节chapter: {}", novels.getSourceUrl(), chapters.getChapter());
                             } catch (Exception e) {
                                 log.error("趣书吧 one fail: {}", e.getMessage());
@@ -310,8 +361,14 @@ public class TheftProcessor {
                     try {
                         Element aElement = liElement.getElementsByTag("a").get(0);
                         String novelsUrl = aElement.attr("href");
-                        List<Novels> jNovels = novelsRepository.findBySourceUrl(novelsUrl);
-                        if (jNovels != null && jNovels.size() > 0) {
+                        // 判断 是否已经存在，如果存在则跳过
+                        Map<String, Object> novelsTermParams = new HashMap<String, Object>() {
+                            {
+                                put("sourceUrl", novelsUrl);
+                            }
+                        };
+                        List<SearchResult.Hit<Object, Void>> jNovels = elasticSearchDao.mustTermRangeQuery(novelsElasticSearch, novelsTermParams, null);
+                        if (jNovels != null && !jNovels.isEmpty()) {
                             continue;
                         }
                         Document novelsDoc = HttpUtil.getHtmlFromUrl(novelsUrl, true);
@@ -336,25 +393,31 @@ public class TheftProcessor {
                         Thread.sleep(1);
                         Long createTime = DateUtil.dateToLong(new Date());
                         Novels novels = Novels.builder().title(title).author(author).sourceUrl(novelsUrl).sourceName("飞库小说").category(category).createTime(createTime).coverUrl(coverUrl).introduction(introduction).latestChapter(latestChapter).updateTime(updateTime).build();
-                        novels = novelsRepository.save(novels);
+                        JestResult jestResult = elasticSearchDao.save(novelsElasticSearch, novels);
+                        String novelsId = ((DocumentResult)jestResult).getId();
                         log.info("NOVELS当前小说sourceUrl: {}", novels.getSourceUrl());
                         String listUrl = novelsDoc.getElementsByClass("catalogbtn").get(0).attr("href");
-                        String novelsId = novels.getId();
                         Document listDoc = HttpUtil.getHtmlFromUrl(listUrl, true);
                         Elements chapterList = listDoc.getElementsByClass("chapter-list").get(0).getElementsByTag("a");
                         for (int k = 0, kLen = chapterList.size(); k < kLen; k++) {
                             try {
                                 String contentUrl = "http://www.feiku.org" + chapterList.get(k).attr("href");
                                 String chapter = chapterList.get(k).html();
-                                List<Chapters> kChapters = chaptersRepository.findByChapterAndNovelsId(chapter, novelsId);
+                                Map<String, Object> chaptersTermParams = new HashMap<String, Object>() {
+                                    {
+                                        put("chapter", chapter);
+                                        put("novelsId", novelsId);
+                                    }
+                                };
+                                List<SearchResult.Hit<Object, Void>> kChapters = elasticSearchDao.mustTermRangeQuery(chaptersElasticSearch, chaptersTermParams, null);
                                 if (kChapters != null && kChapters.size() > 0) {
                                     continue;
                                 }
-                                Date chapterUpTime = DateUtil.intervalTime(strUpdateTime, kLen - k - 1);
+                                String chapterUpTime = DateUtil.intervalTime(strUpdateTime, kLen - k - 1);
                                 Document contentDoc = HttpUtil.getHtmlFromUrl(contentUrl, true);
                                 String content = contentDoc.getElementsByClass("article-con").get(0).html();
                                 Chapters chapters = Chapters.builder().chapter(chapter).content(content).novelsId(novelsId).updateTime(chapterUpTime).build();
-                                chaptersRepository.save(chapters);
+                                elasticSearchDao.save(chaptersElasticSearch, chapters);
                                 log.info("CHAPTERS当前小说sourceUrl: {}; 章节chapter: {}", novels.getSourceUrl(), chapters.getChapter());
                             } catch (Exception e) {
                                 log.error("飞库小说 one fail: {}", e.getMessage());
