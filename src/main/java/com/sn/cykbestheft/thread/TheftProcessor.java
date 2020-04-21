@@ -100,6 +100,7 @@ public class TheftProcessor {
                     log.error("147小说 two fail: {}", e.getMessage());
                 }
             }
+            log.info("爬取categoryUrl: {}完毕!", categoryUrl);
         } catch (Exception e) {
             e.printStackTrace();
             log.error("爬取147小说sortVal: {} fail:", sortVal);
