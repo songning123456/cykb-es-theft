@@ -56,7 +56,6 @@ public class TheftProcessor {
                         continue;
                     }
                     Document listDoc = HttpUtil.getHtmlFromUrl(sourceUrl, true);
-                    log.info("获取listDoc {} 成功!", listDoc);
                     String coverUrl = listDoc.getElementById("fmimg").getElementsByTag("img").get(0).attr("src");
                     log.info("获取coverUrl {} 成功!", coverUrl);
                     String introduction = listDoc.getElementById("intro").html();
