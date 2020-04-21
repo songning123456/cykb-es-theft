@@ -22,7 +22,7 @@ public class ElasticSearch {
     private Integer from = 0;
 
     @Builder.Default
-    private Integer size = 10;
+    private Integer size = 10000;
 
     private String sort;
 
