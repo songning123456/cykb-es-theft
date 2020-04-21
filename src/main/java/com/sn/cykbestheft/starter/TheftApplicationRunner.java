@@ -5,8 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+
+import java.util.*;
 
 /**
  * @author: songning
@@ -14,7 +15,6 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @Slf4j
-@Order(1)
 public class TheftApplicationRunner implements ApplicationRunner {
 
     @Autowired
@@ -24,11 +24,10 @@ public class TheftApplicationRunner implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         log.info("准备开始爬取小说!!!");
         try {
-            theftProcessor.theftBiquge();
-            theftProcessor.theft147();
-            theftProcessor.theftTtsb();
-            theftProcessor.theftQushuba();
-            theftProcessor.theftFeiku();
+            List<Integer> suffixList = Arrays.asList(1, 2, 3, 4, 6, 7, 10, 11, 8, 12, 9, 5);
+            for (Integer integer : suffixList) {
+                theftProcessor.theft147(integer);
+            }
         } catch (Exception e) {
             log.error("爬取小说异常: {}", e.getMessage());
         }

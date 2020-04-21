@@ -21,4 +21,6 @@ public class Chapters {
     private String novelsId;
 
     private String updateTime;
+
+    private String contentUrl;
 }

@@ -19,14 +19,14 @@ public class ThreadConfig {
      *
      * @return
      */
-    @Bean(name = "CategoryExecutor")
-    public Executor categoryExecutor() {
+    @Bean(name = "TheftExecutor")
+    public Executor theftExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(17);
         executor.setMaxPoolSize(100);
         executor.setQueueCapacity(200);
         executor.setKeepAliveSeconds(3600);
-        executor.setThreadNamePrefix("CategoryAsync_");
+        executor.setThreadNamePrefix("TheftAsync_");
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(3600);
