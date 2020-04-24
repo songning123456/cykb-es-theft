@@ -55,7 +55,17 @@ public class TheftProcessor {
                     if (jNovels != null && !jNovels.isEmpty()) {
                         continue;
                     }
-                    Document listDoc = HttpUtil.getHtmlFromUrl(sourceUrl, true);
+                    Document listDoc = null;
+                    try {
+                        listDoc = HttpUtil.getHtmlFromUrl(sourceUrl, true);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        log.error("获取listDoc fail: {}", e.getMessage());
+                    }
+                    if (listDoc == null) {
+                        log.error("listDoc为null,准备下一本小说");
+                        continue;
+                    }
                     String coverUrl = listDoc.getElementById("fmimg").getElementsByTag("img").get(0).attr("src");
                     log.info("获取coverUrl {} 成功!", coverUrl);
                     String introduction = listDoc.getElementById("intro").html();
