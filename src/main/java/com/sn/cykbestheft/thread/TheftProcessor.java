@@ -153,6 +153,7 @@ public class TheftProcessor {
                 Thread.sleep(1);
                 Long createTime = DateUtil.dateToLong(new Date());
                 String category = childDoc.getElementsByClass("con_top").get(0).getElementsByTag("a").get(2).html();
+                category = category.replaceAll("小说", "");
                 log.info("获取category {} 成功!", category);
                 String strUpdateTime = infoElement.getElementsByTag("p").get(2).html().split("：")[1];
                 log.info("获取novelsUpdateTime {} 成功!", strUpdateTime);
