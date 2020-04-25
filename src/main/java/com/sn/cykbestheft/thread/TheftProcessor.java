@@ -120,16 +120,27 @@ public class TheftProcessor {
     public void theftBiquge(Element ulElement) {
         for (int j = 0, jLen = ulElement.getElementsByTag("a").size(); j < jLen; j++) {
             try {
-                String bookUrl = ulElement.getElementsByTag("a").get(j).attr("href");
+                String sourceUrl = ulElement.getElementsByTag("a").get(j).attr("href");
                 Map<String, Object> novelsTermParams = new HashMap<String, Object>(2) {{
-                    put("sourceUrl", bookUrl);
+                    put("sourceUrl", sourceUrl);
                 }};
                 List<SearchResult.Hit<Object, Void>> jNovels = elasticSearchDao.mustTermRangeQuery(novelsElasticSearch, novelsTermParams, null);
                 if (jNovels != null && !jNovels.isEmpty()) {
                     continue;
                 }
-                Document childDoc = HttpUtil.getHtmlFromUrl(bookUrl, true);
-                Element maininfoElement = childDoc.getElementById("maininfo");
+                log.info("~~~first compare: sourceUrl书库里不存在当前小说，继续爬虫!~~~");
+                Document listDoc = null;
+                try {
+                    listDoc = HttpUtil.getHtmlFromUrl(sourceUrl, true);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    log.error("获取listDoc fail: {}", e.getMessage());
+                }
+                if (listDoc == null) {
+                    log.error("listDoc为null,准备下一本小说");
+                    continue;
+                }
+                Element maininfoElement = listDoc.getElementById("maininfo");
                 Element infoElement = maininfoElement.getElementById("info");
                 String title = infoElement.getElementsByTag("h1").html();
                 log.info("获取title {} 成功!", title);
@@ -144,7 +155,8 @@ public class TheftProcessor {
                 if (againNovels != null && !againNovels.isEmpty()) {
                     continue;
                 }
-                String coverUrl = childDoc.getElementById("sidebar").getElementsByTag("img").get(0).attr("src");
+                log.info("~~~second compare: title-author书库里不存在当前小说，继续爬虫!~~~");
+                String coverUrl = listDoc.getElementById("sidebar").getElementsByTag("img").get(0).attr("src");
                 log.info("获取coverUrl {} 成功!", coverUrl);
                 String introduction = maininfoElement.getElementById("intro").getElementsByTag("p").get(1).html();
                 log.info("获取introduction {} 成功!", introduction);
@@ -152,16 +164,16 @@ public class TheftProcessor {
                 log.info("获取latestChapter {} 成功!", latestChapter);
                 Thread.sleep(1);
                 Long createTime = DateUtil.dateToLong(new Date());
-                String category = childDoc.getElementsByClass("con_top").get(0).getElementsByTag("a").get(2).html();
+                String category = listDoc.getElementsByClass("con_top").get(0).getElementsByTag("a").get(2).html();
                 category = category.replaceAll("小说", "");
                 log.info("获取category {} 成功!", category);
                 String strUpdateTime = infoElement.getElementsByTag("p").get(2).html().split("：")[1];
                 log.info("获取novelsUpdateTime {} 成功!", strUpdateTime);
-                Novels novels = Novels.builder().title(title).author(author).sourceUrl(bookUrl).sourceName("笔趣阁").status("已完结").category(category).createTime(createTime).coverUrl(coverUrl).introduction(introduction).latestChapter(latestChapter).updateTime(strUpdateTime).build();
+                Novels novels = Novels.builder().title(title).author(author).sourceUrl(sourceUrl).sourceName("笔趣阁").status("已完结").category(category).createTime(createTime).coverUrl(coverUrl).introduction(introduction).latestChapter(latestChapter).updateTime(strUpdateTime).build();
                 JestResult jestResult = elasticSearchDao.save(novelsElasticSearch, novels);
                 String novelsId = ((DocumentResult) jestResult).getId();
                 log.info("NOVELS当前小说sourceUrl: {}", novels.getSourceUrl());
-                Element dlElement = childDoc.getElementById("list").getElementsByTag("dl").get(0);
+                Element dlElement = listDoc.getElementById("list").getElementsByTag("dl").get(0);
                 for (int k = 0, kLen = dlElement.getElementsByTag("dd").size(); k < kLen; k++) {
                     try {
                         Element a = dlElement.getElementsByTag("dd").get(k).getElementsByTag("a").get(0);
