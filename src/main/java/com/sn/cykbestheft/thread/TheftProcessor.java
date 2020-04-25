@@ -181,5 +181,6 @@ public class TheftProcessor {
                 log.error("笔趣阁 two: {}", e.getMessage());
             }
         }
+        log.info("爬取笔趣阁someone完毕!");
     }
 }
