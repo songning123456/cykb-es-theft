@@ -14,13 +14,18 @@ public class Chapters {
 
     private String chapterId;
 
+    @NonNull
     private String chapter;
 
+    @NonNull
     private String content;
 
+    @NonNull
     private String novelsId;
 
+    @NonNull
     private String updateTime;
 
+    @NonNull
     private String contentUrl;
 }

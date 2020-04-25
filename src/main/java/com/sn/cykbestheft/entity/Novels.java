@@ -16,25 +16,36 @@ public class Novels {
 
     private String novelsId;
 
+    @NonNull
     private String title;
 
+    @NonNull
     private String author;
 
+    @NonNull
     private String category;
 
+    @NonNull
     private String introduction;
 
+    @NonNull
     private String latestChapter;
 
+    @NonNull
     private String coverUrl;
 
+    @NonNull
     private String updateTime;
 
+    @NonNull
     private Long createTime;
 
+    @NonNull
     private String sourceUrl;
 
+    @NonNull
     private String sourceName;
 
-    private String status;
+    @Builder.Default
+    private String status = "已完结";
 }

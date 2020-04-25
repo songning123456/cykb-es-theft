@@ -157,7 +157,7 @@ public class TheftProcessor {
                 log.info("获取category {} 成功!", category);
                 String strUpdateTime = infoElement.getElementsByTag("p").get(2).html().split("：")[1];
                 log.info("获取novelsUpdateTime {} 成功!", strUpdateTime);
-                Novels novels = Novels.builder().title(title).author(author).sourceUrl(bookUrl).sourceName("笔趣阁").category(category).createTime(createTime).coverUrl(coverUrl).introduction(introduction).latestChapter(latestChapter).updateTime(strUpdateTime).build();
+                Novels novels = Novels.builder().title(title).author(author).sourceUrl(bookUrl).sourceName("笔趣阁").status("已完结").category(category).createTime(createTime).coverUrl(coverUrl).introduction(introduction).latestChapter(latestChapter).updateTime(strUpdateTime).build();
                 JestResult jestResult = elasticSearchDao.save(novelsElasticSearch, novels);
                 String novelsId = ((DocumentResult) jestResult).getId();
                 log.info("NOVELS当前小说sourceUrl: {}", novels.getSourceUrl());
