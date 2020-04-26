@@ -26,7 +26,7 @@ public class TheftApplicationRunner implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         log.info("准备开始爬取小说!!!");
-        this.prepareBiquge();
+        this.prepareQushuba();
     }
 
     private void prepare147() {
@@ -58,6 +58,23 @@ public class TheftApplicationRunner implements ApplicationRunner {
             }
         } catch (Exception e) {
             log.error("爬取笔趣阁小说异常: {}", e.getMessage());
+        }
+    }
+
+    private void prepareQushuba() {
+        try {
+            String source = "http://www.qushuba.com/xiaoshuodaquan/";
+            Document html = HttpUtil.getHtmlFromUrl(source, true);
+            log.info("~~~获取趣书吧全部小说页面成功!~~~");
+            Element mainElement = html.getElementById("main");
+            for (int i = 0, iLen = mainElement.getElementsByClass("novellist").size(); i < iLen; i++) {
+                Element ulElement = mainElement.getElementsByClass("novellist").get(i).getElementsByTag("ul").get(0);
+                log.info("准备爬取趣书吧i: {}", i);
+                theftProcessor.theftQushuba(ulElement);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            log.error("爬取趣书吧小说异常: {}", e.getMessage());
         }
     }
 }

@@ -195,4 +195,86 @@ public class TheftProcessor {
         }
         log.info("爬取笔趣阁someone完毕!");
     }
+
+    @Async("TheftExecutor")
+    public void theftQushuba(Element ulElement) {
+        try {
+            for (int j = 0, jLen = ulElement.getElementsByTag("a").size(); j < jLen; j++) {
+                String sourceUrl = ulElement.getElementsByTag("a").get(j).attr("href");
+                // 判断 是否已经存在，如果存在则跳过
+                Map<String, Object> novelsTermParams = new HashMap<String, Object>(2) {{
+                    put("sourceUrl", sourceUrl);
+                }};
+                List<SearchResult.Hit<Object, Void>> jNovels = elasticSearchDao.mustTermRangeQuery(novelsElasticSearch, novelsTermParams, null);
+                if (jNovels != null && !jNovels.isEmpty()) {
+                    continue;
+                }
+                log.info("~~~first compare: sourceUrl书库里不存在当前小说，继续爬虫!~~~");
+                Document listDoc = null;
+                try {
+                    listDoc = HttpUtil.getHtmlFromUrl(sourceUrl, true);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    log.error("获取listDoc fail: {}", e.getMessage());
+                }
+                if (listDoc == null) {
+                    log.error("listDoc为null,准备下一本小说");
+                    continue;
+                }
+                Element maininfoElement = listDoc.getElementById("maininfo");
+                Element infoElement = maininfoElement.getElementById("info");
+                String title = infoElement.getElementsByTag("h1").html();
+                log.info("获取title {} 成功!", title);
+                String author = infoElement.getElementsByTag("p").get(0).html().split("：")[1];
+                log.info("获取author {} 成功!", author);
+                // 当 书名 和 作者 一致时 代表这本书已经存在，所以不需要
+                Map<String, Object> againTermParams = new HashMap<String, Object>(2) {{
+                    put("title", title);
+                    put("author", author);
+                }};
+                List<SearchResult.Hit<Object, Void>> againNovels = elasticSearchDao.mustTermRangeQuery(novelsElasticSearch, againTermParams, null);
+                if (againNovels != null && !againNovels.isEmpty()) {
+                    continue;
+                }
+                log.info("~~~second compare: title-author书库里不存在当前小说，继续爬虫!~~~");
+                String coverUrl = listDoc.getElementById("sidebar").getElementsByTag("img").get(0).attr("src");
+                log.info("获取coverUrl {} 成功!", coverUrl);
+                String introduction = maininfoElement.getElementById("intro").getElementsByTag("p").get(0).html();
+                log.info("获取introduction {} 成功!", introduction);
+                String latestChapter = infoElement.getElementsByTag("p").get(3).getElementsByTag("a").get(0).html();
+                log.info("获取latestChapter {} 成功!", latestChapter);
+                Thread.sleep(1);
+                Long createTime = DateUtil.dateToLong(new Date());
+                String category = listDoc.getElementsByClass("con_top").get(0).getElementsByTag("a").get(2).html();
+                category = category.replaceAll("小说", "");
+                log.info("获取category {} 成功!", category);
+                String[] times = (infoElement.getElementsByTag("p").get(2).html().split("：")[1]).split(" ");
+                String strUpdateTime = times[0] + " " + times[1] + ":00";
+                log.info("获取novelsUpdateTime {} 成功!", strUpdateTime);
+                Novels novels = Novels.builder().title(title).author(author).sourceUrl(sourceUrl).sourceName("趣书吧").status("已完结").category(category).createTime(createTime).coverUrl(coverUrl).introduction(introduction).latestChapter(latestChapter).updateTime(strUpdateTime).build();
+                JestResult jestResult = elasticSearchDao.save(novelsElasticSearch, novels);
+                String novelsId = ((DocumentResult) jestResult).getId();
+                log.info("NOVELS当前小说sourceUrl: {}", novels.getSourceUrl());
+                Element dlElement = listDoc.getElementById("list").getElementsByTag("dl").get(0);
+                for (int k = 0, kLen = dlElement.getElementsByTag("dd").size(); k < kLen; k++) {
+                    try {
+                        Element a = dlElement.getElementsByTag("dd").get(k).getElementsByTag("a").get(0);
+                        String chapter = a.html();
+                        log.info("获取chapter {} 成功!", chapter);
+                        String chapterUpTime = DateUtil.intervalTime(strUpdateTime, kLen - k - 1);
+                        String contentUrl = sourceUrl + a.attr("href");
+                        log.info("获取contentUrl {} 成功!", contentUrl);
+                        Chapters chapters = Chapters.builder().chapter(chapter).contentUrl(contentUrl).content("暂无资源...").novelsId(novelsId).updateTime(chapterUpTime).build();
+                        elasticSearchDao.save(chaptersElasticSearch, chapters);
+                        log.info("CHAPTERS当前小说sourceUrl: {}; 章节chapter: {}", novels.getSourceUrl(), chapters.getChapter());
+                    } catch (Exception e) {
+                        log.error("趣书吧 one fail: {}", e.getMessage());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("趣书吧 two fail: {}", e.getMessage());
+        }
+        log.info("爬取趣书吧someone完毕!");
+    }
 }
